@@ -25,7 +25,7 @@ start_link(BaseKey) ->
 init(BaseKey) ->
     {ok, Delay} = application:get_env(vmstats, delay),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
-    {ok, #state{key=BaseKey, timer_ref=Ref, delay=Delay}}.
+    {ok, #state{key=[BaseKey,$.], timer_ref=Ref, delay=Delay}}.
 
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
