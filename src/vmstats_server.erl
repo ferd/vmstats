@@ -78,8 +78,12 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
     case Sched of
         enabled ->
             NewSched = lists:sort(erlang:statistics(scheduler_wall_time)),
-            [statsderl:increment([K,"scheduler_wall_time.",integer_to_list(Sid)], T, 1.00)
-             || {Sid, T} <- wall_time_diff(PrevSched, NewSched)],
+            [begin
+                SSid = integer_to_list(Sid),
+                statsderl:timing([K,"scheduler_wall_time.",SSid,".active"], Active, 1.00),
+                statsderl:timing([K,"scheduler_wall_time.",SSid,".total"], Total, 1.00)
+             end
+             || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
                               prev_sched=NewSched}};
         disabled ->
@@ -99,5 +103,5 @@ terminate(_Reason, _State) ->
 %% Returns the two timeslices as a ratio of each other,
 %% as a percentage so that StatsD gets to print something > 1
 wall_time_diff(T1, T2) ->
-    [{I, round(((Active2-Active1)/(Total2-Total1))*100)}
+    [{I, Active2-Active1, Total2-Total1}
      || {{I, Active1, Total1}, {I, Active2, Total2}} <- lists:zip(T1,T2)].
