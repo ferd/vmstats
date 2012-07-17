@@ -12,6 +12,8 @@
 -define(TIMER_MSG, '#delay').
 
 -record(state, {key :: string(),
+                sched_time :: enabled | disabled,
+                prev_sched :: [{integer(), integer(), integer()}],
                 timer_ref :: reference(),
                 delay :: integer()}). % milliseconds
 
@@ -25,7 +27,20 @@ start_link(BaseKey) ->
 init(BaseKey) ->
     {ok, Delay} = application:get_env(vmstats, delay),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
-    {ok, #state{key=[BaseKey,$.], timer_ref=Ref, delay=Delay}}.
+    try erlang:system_flag(scheduler_wall_time, true) of
+        _ ->
+            {ok, #state{key = [BaseKey,$.],
+                        timer_ref = Ref,
+                        delay = Delay,
+                        sched_time = enabled,
+                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time))}}
+    catch
+        error:badarg ->
+            {ok, #state{key = [BaseKey,$.],
+                        timer_ref = Ref,
+                        delay = Delay,
+                        sched_time = disabled}}
+    end.
 
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
@@ -58,7 +73,20 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
     statsderl:increment([K2,"binary"], proplists:get_value(binary, Mem), 1.00),
     statsderl:increment([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
 
-    {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG)}};
+    %% Scheduler wall time
+    #state{sched_time=Sched, prev_sched=PrevSched} = S,
+    case Sched of
+        enabled ->
+            NewSched = lists:sort(erlang:statistics(scheduler_wall_time)),
+            [statsderl:increment([K,"scheduler_wall_time.",integer_to_list(Sid)], T, 1.00)
+             || {Sid, T} <- wall_time_diff(PrevSched, NewSched)],
+            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
+                              prev_sched=NewSched}};
+        disabled ->
+            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG)}}
+    end;
+handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
+    exit(forced_upgrade_restart);
 handle_info(_Msg, State) ->
     {noreply, State}.
 
@@ -67,3 +95,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+%% Returns the two timeslices as a ratio of each other,
+%% as a percentage so that StatsD gets to print something > 1
+wall_time_diff(T1, T2) ->
+    [{I, round(((Active2-Active1)/(Total2-Total1))*100)}
+     || {{I, Active1, Total1}, {I, Active2, Total2}} <- lists:zip(T1,T2)].
