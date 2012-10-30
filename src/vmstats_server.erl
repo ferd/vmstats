@@ -50,28 +50,28 @@ handle_cast(_Msg, State) ->
 
 handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) ->
     %% Processes
-    statsderl:increment([K,"proc_count"], erlang:system_info(process_count), 1.00),
-    statsderl:increment([K,"proc_limit"], erlang:system_info(process_limit), 1.00),
+    statsderl:gauge([K,"proc_count"], erlang:system_info(process_count), 1.00),
+    statsderl:gauge([K,"proc_limit"], erlang:system_info(process_limit), 1.00),
 
     %% Modules loaded
-    statsderl:increment([K,"modules"], length(code:all_loaded()), 1.00),
+    statsderl:gauge([K,"modules"], length(code:all_loaded()), 1.00),
 
     %% Queued up processes (lower is better)
-    statsderl:increment([K,"run_queue"], erlang:statistics(run_queue), 1.00),
+    statsderl:gauge([K,"run_queue"], erlang:statistics(run_queue), 1.00),
 
     %% Error logger backlog (lower is better)
     {_, MQL} = process_info(whereis(error_logger), message_queue_len),
-    statsderl:increment([K,"error_logger_queue_len"], MQL, 1.00),
+    statsderl:gauge([K,"error_logger_queue_len"], MQL, 1.00),
 
     %% Memory usage. There are more options available, but not all were kept.
     %% Memory usage is in bytes.
     K2 = [K,"memory."],
     Mem = erlang:memory(),
-    statsderl:increment([K2,"total"], proplists:get_value(total, Mem), 1.00),
-    statsderl:increment([K2,"procs_used"], proplists:get_value(processes_used,Mem), 1.00),
-    statsderl:increment([K2,"atom_used"], proplists:get_value(atom_used,Mem), 1.00),
-    statsderl:increment([K2,"binary"], proplists:get_value(binary, Mem), 1.00),
-    statsderl:increment([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
+    statsderl:gauge([K2,"total"], proplists:get_value(total, Mem), 1.00),
+    statsderl:gauge([K2,"procs_used"], proplists:get_value(processes_used,Mem), 1.00),
+    statsderl:gauge([K2,"atom_used"], proplists:get_value(atom_used,Mem), 1.00),
+    statsderl:gauge([K2,"binary"], proplists:get_value(binary, Mem), 1.00),
+    statsderl:gauge([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
 
     %% Scheduler wall time
     #state{sched_time=Sched, prev_sched=PrevSched} = S,
