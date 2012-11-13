@@ -1,11 +1,11 @@
 -module(statsderl).
--export([start_link/0, increment/3, called/0, stop/0]).
+-export([start_link/0, gauge/3, called/0, stop/0]).
 
 start_link() ->
     spawn_link(fun() -> init() end).
 
-increment(Key, Data, Freq) ->
-    call({incr, Key, Data, Freq}).
+gauge(Key, Value, SampleRate) ->
+    call({gauge, Key, Value, SampleRate}).
 
 called() -> call(called).
 
@@ -17,7 +17,7 @@ init() ->
 
 loop(Stack) ->
     receive
-        {From, {incr, K, D, F}} ->
+        {From, {gauge, K, D, F}} ->
             reply(From, ok),
             loop([{K,D,F}|Stack]);
         {From, called} ->

@@ -12,7 +12,7 @@
 -define(TIMER_MSG, '#delay').
 
 -record(state, {key :: string(),
-                sched_time :: enabled | disabled,
+                sched_time :: enabled | disabled | unavailable,
                 prev_sched :: [{integer(), integer(), integer()}],
                 timer_ref :: reference(),
                 delay :: integer()}). % milliseconds
@@ -27,19 +27,23 @@ start_link(BaseKey) ->
 init(BaseKey) ->
     {ok, Delay} = application:get_env(vmstats, delay),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
-    try erlang:system_flag(scheduler_wall_time, true) of
-        _ ->
+    case {sched_time_available(), application:get_env(vmstats, sched_time)} of
+        {true, {ok,true}} ->
             {ok, #state{key = [BaseKey,$.],
                         timer_ref = Ref,
                         delay = Delay,
                         sched_time = enabled,
-                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time))}}
-    catch
-        error:badarg ->
+                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time))}};
+        {true, _} ->
             {ok, #state{key = [BaseKey,$.],
                         timer_ref = Ref,
                         delay = Delay,
-                        sched_time = disabled}}
+                        sched_time = disabled}};
+        {false, _} ->
+            {ok, #state{key = [BaseKey,$.],
+                        timer_ref = Ref,
+                        delay = Delay,
+                        sched_time = unavailable}}
     end.
 
 handle_call(_Msg, _From, State) ->
@@ -86,7 +90,7 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
              || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
                               prev_sched=NewSched}};
-        disabled ->
+        _ -> % disabled or unavailable
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG)}}
     end;
 handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
@@ -105,3 +109,11 @@ terminate(_Reason, _State) ->
 wall_time_diff(T1, T2) ->
     [{I, Active2-Active1, Total2-Total1}
      || {{I, Active1, Total1}, {I, Active2, Total2}} <- lists:zip(T1,T2)].
+
+sched_time_available() ->
+    try erlang:system_flag(scheduler_wall_time, true) of
+        _ -> true
+    catch
+        error:badarg -> false
+    end.
+
