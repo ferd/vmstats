@@ -15,8 +15,9 @@
                 sched_time :: enabled | disabled | unavailable,
                 prev_sched :: [{integer(), integer(), integer()}],
                 timer_ref :: reference(),
-                delay :: integer()}). % milliseconds
-
+                delay :: integer(), % milliseconds
+                prev_io :: {In::integer(), Out::integer()},
+                prev_gc :: {GCs::integer(), Words::integer(), 0}}).
 %%% INTERFACE
 %% the base key is passed from the supervisor. This function
 %% should not be called manually.
@@ -27,23 +28,31 @@ start_link(BaseKey) ->
 init(BaseKey) ->
     {ok, Delay} = application:get_env(vmstats, delay),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
+    {{input,In},{output,Out}} = erlang:statistics(io),
+    PrevGC = erlang:statistics(garbage_collection),
     case {sched_time_available(), application:get_env(vmstats, sched_time)} of
         {true, {ok,true}} ->
             {ok, #state{key = [BaseKey,$.],
                         timer_ref = Ref,
                         delay = Delay,
                         sched_time = enabled,
-                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time))}};
+                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time)),
+                        prev_io = {In,Out},
+                        prev_gc = PrevGC}};
         {true, _} ->
             {ok, #state{key = [BaseKey,$.],
                         timer_ref = Ref,
                         delay = Delay,
-                        sched_time = disabled}};
+                        sched_time = disabled,
+                        prev_io = {In,Out},
+                        prev_gc = PrevGC}};
         {false, _} ->
             {ok, #state{key = [BaseKey,$.],
                         timer_ref = Ref,
                         delay = Delay,
-                        sched_time = unavailable}}
+                        sched_time = unavailable,
+                        prev_io = {In,Out},
+                        prev_gc = PrevGC}}
     end.
 
 handle_call(_Msg, _From, State) ->
@@ -77,6 +86,20 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
     statsderl:gauge([K2,"binary"], proplists:get_value(binary, Mem), 1.00),
     statsderl:gauge([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
 
+    %% Incremental values
+    #state{prev_io={OldIn,OldOut}, prev_gc={OldGCs,OldWords,_}} = S,
+    {{input,In},{output,Out}} = erlang:statistics(io),
+    GC = {GCs, Words, _} = erlang:statistics(garbage_collection),
+
+    statsderl:increment([K,"io.bytes_in"], In-OldIn, 1.00),
+    statsderl:increment([K,"io.bytes_out"], Out-OldOut, 1.00),
+    statsderl:increment([K,"gc.count"], GCs-OldGCs, 1.00),
+    statsderl:increment([K,"gc.words_reclaimed"], Words-OldWords, 1.00),
+
+    %% Reductions across the VM, excluding current time slice, already incremental
+    {_, Reds} = erlang:statistics(reductions),
+    statsderl:increment([K,"reductions"], Reds, 1.00),
+
     %% Scheduler wall time
     #state{sched_time=Sched, prev_sched=PrevSched} = S,
     case Sched of
@@ -89,11 +112,24 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
              end
              || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_sched=NewSched}};
+                              prev_sched=NewSched, prev_io={In,Out}, prev_gc=GC}};
         _ -> % disabled or unavailable
-            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG)}}
+            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
+                              prev_io={In,Out}, prev_gc=GC}}
     end;
 handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
+    exit(forced_upgrade_restart);
+handle_info(_Msg, {state, _Key, SchedTime, _PrevSched, _TimerRef, _Delay}) ->
+    %% The older version may have had the scheduler time enabled by default.
+    %% We could check for settings and preserve it in memory, but then it would
+    %% be more confusing if the behaviour changes on the next restart.
+    %% Instead, we show a warning and restart as usual.
+    case {application:get_env(vmstats, sched_time), SchedTime} of
+        {undefined, active} -> % default was on
+            error_logger:warning_msg("vmstats no longer runs scheduler time by default. Restarting...");
+        _ ->
+            ok
+    end,
     exit(forced_upgrade_restart);
 handle_info(_Msg, State) ->
     {noreply, State}.

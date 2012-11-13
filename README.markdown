@@ -30,3 +30,12 @@ Scheduler wall time statistics are now disabled by default to keep in line with 
 ## I was basing myself on 'master' and stuff started breaking!
 
 You are likely using vmstats with an Erlang release prior to R15B. Switch away from master and use the tag "0.1.0" to get back to the functionning version you knew.
+
+## CHANGELOG ##
+
+### 0.2.2 ###
+
+- Adding garbage collection count per interval
+- Adding words reclaimed in garbage collections per interval
+- Adding reduction increment count per interval
+- Adding IO data (bytes in and out) per interval

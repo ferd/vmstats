@@ -15,6 +15,10 @@ timer_500ms_test() ->
     %% First match works
     ?assertMatch(
         [{"key.error_logger_queue_len", _, 1.00},
+         {"key.gc.count",_,1.00},
+         {"key.gc.words_reclaimed",_,1.00},
+         {"key.io.bytes_in",_,1.00},
+         {"key.io.bytes_out",_,1.00},
          {"key.memory.atom_used", _, 1.00},
          {"key.memory.binary", _, 1.00},
          {"key.memory.ets", _, 1.00},
@@ -23,6 +27,7 @@ timer_500ms_test() ->
          {"key.modules", _, 1.00},
          {"key.proc_count", _, 1.00},
          {"key.proc_limit", _, 1.00},
+         {"key.reductions", _, 1.00},
          {"key.run_queue", _, 1.00}],
         lists:sort([{lists:flatten(K), V, Freq} || {K, V, Freq} <- statsderl:called()])
     ),
@@ -31,6 +36,10 @@ timer_500ms_test() ->
     %% Done, we know it loops!
     ?assertMatch(
         [{"key.error_logger_queue_len", _, 1.00},
+         {"key.gc.count",_,1.00},
+         {"key.gc.words_reclaimed",_,1.00},
+         {"key.io.bytes_in",_,1.00},
+         {"key.io.bytes_out",_,1.00},
          {"key.memory.atom_used", _, 1.00},
          {"key.memory.binary", _, 1.00},
          {"key.memory.ets", _, 1.00},
@@ -39,6 +48,7 @@ timer_500ms_test() ->
          {"key.modules", _, 1.00},
          {"key.proc_count", _, 1.00},
          {"key.proc_limit", _, 1.00},
+         {"key.reductions", _, 1.00},
          {"key.run_queue", _, 1.00}],
         lists:sort([{lists:flatten(K), V, Freq} || {K, V, Freq} <- statsderl:called()])
     ),
