@@ -67,18 +67,16 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
     statsderl:gauge([K,"proc_limit"], erlang:system_info(process_limit), 1.00),
 
     %% Messages in queues
-    ProcessInfo = lists:flatmap(
-        fun (Pid) ->
-                case process_info(Pid, message_queue_len) of
-                    undefined ->
-                        [];
-                    {message_queue_len, 0} ->
-                        [];
-                    {message_queue_len, Count} ->
-                        [{Count, Pid}]
-                end
-        end, processes()),
-    TotalMessages = lists:sum(element(1, lists:unzip(ProcessInfo))),
+    TotalMessages = lists:foldl(
+        fun(Pid, Acc) ->
+            case process_info(Pid, message_queue_len) of
+                undefined -> Acc;
+                {message_queue_len, Count} -> Count+Acc
+            end
+        end,
+        0,
+        processes()
+    ),
     statsderl:gauge([K,"messages_in_queues"], TotalMessages, 1.00),
 
     %% Modules loaded

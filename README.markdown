@@ -33,6 +33,10 @@ You are likely using vmstats with an Erlang release prior to R15B. Switch away f
 
 ## CHANGELOG ##
 
+### 0.2.3 (Upcoming version / master branch) ###
+- Adding messages in queues metric, providing a global count of queued up messages in the system.
+
+
 ### 0.2.2 ###
 
 - Adding garbage collection count per interval
