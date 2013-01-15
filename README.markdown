@@ -10,6 +10,11 @@ The different fields include:
  - the length of the run queue
  - the scheduler usage as a percentage (disabled by default)
  - memory used for ETS tables, atoms, processes, binaries and the total memory
+ - garbage collection count per interval
+ - words reclaimed in garbage collections per interval
+ - reduction increment count per interval
+ - IO data (bytes in and out) per interval
+ - global amount of messages in queues on a node
 
 ## How to build ##
 
