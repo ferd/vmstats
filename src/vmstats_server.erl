@@ -111,31 +111,40 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
     {_, Reds} = erlang:statistics(reductions),
     statsderl:increment([Key, <<"reductions">>], Reds, 1.00),
 
-    % system load
-    SystemStats2 = system_stats:proc_load_avg(SystemStats),
-    statsderl:gauge([Key, <<"system.load_1">>], SystemStats2#stats.load_1, 1.00),
-    statsderl:gauge([Key, <<"system.load_5">>], SystemStats2#stats.load_5, 1.00),
-    statsderl:gauge([Key, <<"system.load_15">>], SystemStats2#stats.load_15, 1.00),
+    case os:type() of
+        {_, linux} ->
+            % system load
+            SystemStats2 = system_stats:proc_load_avg(SystemStats),
+            statsderl:gauge([Key, <<"system.load_1">>], SystemStats2#stats.load_1, 1.00),
+            statsderl:gauge([Key, <<"system.load_5">>], SystemStats2#stats.load_5, 1.00),
+            statsderl:gauge([Key, <<"system.load_15">>], SystemStats2#stats.load_15, 1.00),
 
-    % system cpu %
-    SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
-    SystemStats4 = system_stats:proc_stat(SystemStats3),
-    {Ucpu, Scpu} = system_stats_utils:cpu_percent(SystemStats, SystemStats4),
-    CpuPercent = trunc(SystemStats4#stats.cpu_cores * (Ucpu + Scpu)),
-    statsderl:gauge([Key, <<"system.cpu_percent">>], CpuPercent, 1.00),
+            % system cpu %
+            SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
+            SystemStats4 = system_stats:proc_stat(SystemStats3),
+            {Ucpu, Scpu} = system_stats_utils:cpu_percent(SystemStats, SystemStats4),
+            CpuPercent = trunc(SystemStats4#stats.cpu_cores * (Ucpu + Scpu)),
+            statsderl:gauge([Key, <<"system.cpu_percent">>], CpuPercent, 1.00),
 
-    % system memory
-    Vsize = trunc(bytes_to_megabytes(SystemStats4#stats.mem_vsize)),
-    Rss = trunc(bytes_to_megabytes(?PAGE_SIZE * (SystemStats4#stats.mem_rss))),
-    statsderl:gauge([Key, <<"system.vsize">>], Vsize, 1.00),
-    statsderl:gauge([Key, <<"system.rss">>], Rss, 1.00),
+            % system memory
+            Vsize = trunc(bytes_to_megabytes(SystemStats4#stats.mem_vsize)),
+            Rss = trunc(bytes_to_megabytes(?PAGE_SIZE * (SystemStats4#stats.mem_rss))),
+            statsderl:gauge([Key, <<"system.vsize">>], Vsize, 1.00),
+            statsderl:gauge([Key, <<"system.rss">>], Rss, 1.00),
 
-    {noreply, State#state {
-        timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
-        prev_io = {In, Out},
-        prev_gc = GarbageCollector,
-        system_stats = SystemStats4
-    }};
+            {noreply, State#state {
+                timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
+                prev_io = {In, Out},
+                prev_gc = GarbageCollector,
+                system_stats = SystemStats4
+            }};
+        _Else ->
+            {noreply, State#state {
+                timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
+                prev_io = {In, Out},
+                prev_gc = GarbageCollector
+            }}
+    end;
 handle_info(_Msg, State) ->
     {noreply, State}.
 
