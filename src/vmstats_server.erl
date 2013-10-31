@@ -91,11 +91,11 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
     % vm memory usage
     MemoryKey = [Key, "memory."],
     Memory = erlang:memory(),
-    statsderl:gauge([MemoryKey, <<"total">>], proplists:get_value(total, Memory), 1.00),
-    statsderl:gauge([MemoryKey, <<"procs_used">>], proplists:get_value(processes_used, Memory), 1.00),
-    statsderl:gauge([MemoryKey, <<"atom_used">>], proplists:get_value(atom_used, Memory), 1.00),
-    statsderl:gauge([MemoryKey, <<"binary">>], proplists:get_value(binary, Memory), 1.00),
-    statsderl:gauge([MemoryKey, <<"ets">>], proplists:get_value(ets, Memory), 1.00),
+    statsderl:gauge([MemoryKey, <<"total">>], bytes_to_megabytes(proplists:get_value(total, Memory)), 1.00),
+    statsderl:gauge([MemoryKey, <<"procs_used">>], bytes_to_megabytes(proplists:get_value(processes_used, Memory)), 1.00),
+    statsderl:gauge([MemoryKey, <<"atom_used">>], bytes_to_megabytes(proplists:get_value(atom_used, Memory)), 1.00),
+    statsderl:gauge([MemoryKey, <<"binary">>], bytes_to_megabytes(proplists:get_value(binary, Memory)), 1.00),
+    statsderl:gauge([MemoryKey, <<"ets">>], bytes_to_megabytes(proplists:get_value(ets, Memory)), 1.00),
 
     % io
     {{input, In}, {output, Out}} = erlang:statistics(io),
@@ -125,8 +125,8 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
     statsderl:gauge([Key, <<"system.cpu_percent">>], CpuPercent, 1.00),
 
     % system memory
-    Vsize = trunc(system_stats_utils:bytes_to_megabytes(SystemStats4#stats.mem_vsize)),
-    Rss = trunc(system_stats_utils:bytes_to_megabytes(?PAGE_SIZE * (SystemStats4#stats.mem_rss))),
+    Vsize = trunc(bytes_to_megabytes(SystemStats4#stats.mem_vsize)),
+    Rss = trunc(bytes_to_megabytes(?PAGE_SIZE * (SystemStats4#stats.mem_rss))),
     statsderl:gauge([Key, <<"system.vsize">>], Vsize, 1.00),
     statsderl:gauge([Key, <<"system.rss">>], Rss, 1.00),
 
@@ -144,3 +144,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+%% private
+bytes_to_megabytes(Bytes) -> Bytes / 1048576.
