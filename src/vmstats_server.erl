@@ -23,7 +23,6 @@
 
 -record(state, {
     key :: string(),
-    prev_sched :: [{integer(), integer(), integer()}],
     timer_ref :: reference(),
     prev_io :: {In::integer(), Out::integer()},
     prev_gc :: {GCs::integer(), Words::integer(), 0},
@@ -42,10 +41,10 @@ init(BaseKey) ->
     SystemStats = system_stats:proc_cpuinfo(system_stats_utils:new_stats()),
     SystemStats2 = system_stats:proc_stat(SystemStats),
     SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
+
     {ok, #state {
         key = [BaseKey, $.],
         timer_ref = Ref,
-        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time)),
         prev_io = {In,Out},
         prev_gc = PrevGC,
         system_stats = SystemStats3
@@ -62,7 +61,6 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
         timer_ref = TimerRef,
         prev_io = {OldIn, OldOut},
         prev_gc = {OldGCs, OldWords, _},
-        prev_sched = PrevSched,
         system_stats = SystemStats
     } = State) ->
 
@@ -113,14 +111,6 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
     {_, Reds} = erlang:statistics(reductions),
     statsderl:increment([Key, <<"reductions">>], Reds, 1.00),
 
-    % scheduler wall time
-    NewSched = lists:sort(erlang:statistics(scheduler_wall_time)),
-    [begin
-        Sid2 = integer_to_list(Sid),
-        statsderl:timing([Key, <<"scheduler_wall_time.">>, Sid2, <<".active">>], Active, 1.00),
-        statsderl:timing([Key, <<"scheduler_wall_time.">>, Sid2, <<".total">>], Total, 1.00)
-     end || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
-
     % system load
     SystemStats2 = system_stats:proc_load_avg(SystemStats),
     statsderl:gauge([Key, <<"system.load_1">>], SystemStats#stats.load_1, 1.00),
@@ -142,7 +132,6 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
 
     {noreply, State#state {
         timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
-        prev_sched = NewSched,
         prev_io = {In, Out},
         prev_gc = GarbageCollector,
         system_stats = SystemStats4
@@ -155,8 +144,3 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     ok.
-
-%% private
-wall_time_diff(T1, T2) ->
-    [{I, Active2 - Active1, Total2 - Total1} ||
-        {{I, Active1, Total1}, {I, Active2, Total2}} <- lists:zip(T1, T2)].
