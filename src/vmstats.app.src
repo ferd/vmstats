@@ -1,7 +1,10 @@
 {application, vmstats, [
   {description, "Tiny application to gather VM statistics for StatsD client"},
   {vsn, "0.2.3"},
-  {registered, [vmstats_sup, vmstats_server]},
+  {registered, [
+      vmstats_sup,
+      vmstats_server
+  ]},
   {applications, [
     kernel,
     stdlib,
@@ -9,9 +12,9 @@
   ]},
   {mod, {vmstats, []}},
   {applications, [statsderl]},
-  {modules, [vmstats, vmstats_sup, vmstats_server]},
-  {env, [
-    {delay, 1000}, % in milliseconds
-    {sched_time, false}
+  {modules, [
+      vmstats,
+      vmstats_sup,
+      vmstats_server
   ]}
 ]}.
