@@ -7,7 +7,6 @@
     start_link/1
 ]).
 
-
 %% private
 -export([
     init/1,
@@ -18,6 +17,7 @@
     terminate/2
 ]).
 
+-define(DELAY, 1000).
 -define(PAGE_SIZE, 4096).
 -define(TIMER_MSG, '#delay').
 
@@ -25,7 +25,6 @@
     key :: string(),
     prev_sched :: [{integer(), integer(), integer()}],
     timer_ref :: reference(),
-    delay :: integer(), % milliseconds
     prev_io :: {In::integer(), Out::integer()},
     prev_gc :: {GCs::integer(), Words::integer(), 0},
     system_stats :: #stats {}
@@ -37,8 +36,7 @@ start_link(BaseKey) ->
 
 %% private
 init(BaseKey) ->
-    {ok, Delay} = application:get_env(vmstats, delay),
-    Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
+    Ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
     {{input, In}, {output, Out}} = erlang:statistics(io),
     PrevGC = erlang:statistics(garbage_collection),
     SystemStats = system_stats:proc_cpuinfo(system_stats_utils:new_stats()),
@@ -47,7 +45,6 @@ init(BaseKey) ->
     {ok, #state {
         key = [BaseKey, $.],
         timer_ref = Ref,
-        delay = Delay,
         prev_sched = lists:sort(erlang:statistics(scheduler_wall_time)),
         prev_io = {In,Out},
         prev_gc = PrevGC,
@@ -62,7 +59,6 @@ handle_cast(_Msg, State) ->
 
 handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
         key = Key,
-        delay = Delay,
         timer_ref = TimerRef,
         prev_io = {OldIn, OldOut},
         prev_gc = {OldGCs, OldWords, _},
@@ -145,14 +141,12 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
     statsderl:gauge([Key, <<"system.rss">>], Rss, 1.00),
 
     {noreply, State#state {
-        timer_ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
+        timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
         prev_sched = NewSched,
         prev_io = {In, Out},
         prev_gc = GarbageCollector,
         system_stats = SystemStats4
     }};
-handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
-    exit(forced_upgrade_restart);
 handle_info(_Msg, State) ->
     {noreply, State}.
 
