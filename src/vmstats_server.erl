@@ -113,15 +113,15 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
 
     % system load
     SystemStats2 = system_stats:proc_load_avg(SystemStats),
-    statsderl:gauge([Key, <<"system.load_1">>], SystemStats#stats.load_1, 1.00),
-    statsderl:gauge([Key, <<"system.load_5">>], SystemStats#stats.load_5, 1.00),
-    statsderl:gauge([Key, <<"system.load_15">>], SystemStats#stats.load_15, 1.00),
+    statsderl:gauge([Key, <<"system.load_1">>], SystemStats2#stats.load_1, 1.00),
+    statsderl:gauge([Key, <<"system.load_5">>], SystemStats2#stats.load_5, 1.00),
+    statsderl:gauge([Key, <<"system.load_15">>], SystemStats2#stats.load_15, 1.00),
 
     % system cpu %
     SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
     SystemStats4 = system_stats:proc_stat(SystemStats3),
-    {Ucpu, Scpu} = system_stats_utils:cpu_percent(SystemStats, SystemStats3),
-    CpuPercent = trunc(SystemStats#stats.cpu_cores * (Ucpu + Scpu)),
+    {Ucpu, Scpu} = system_stats_utils:cpu_percent(SystemStats, SystemStats4),
+    CpuPercent = trunc(SystemStats4#stats.cpu_cores * (Ucpu + Scpu)),
     statsderl:gauge([Key, <<"system.cpu_percent">>], CpuPercent, 1.00),
 
     % system memory
