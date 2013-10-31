@@ -38,17 +38,28 @@ init(BaseKey) ->
     Ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
     {{input, In}, {output, Out}} = erlang:statistics(io),
     PrevGC = erlang:statistics(garbage_collection),
-    SystemStats = system_stats:proc_cpuinfo(system_stats_utils:new_stats()),
-    SystemStats2 = system_stats:proc_stat(SystemStats),
-    SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
 
-    {ok, #state {
-        key = [BaseKey, $.],
-        timer_ref = Ref,
-        prev_io = {In,Out},
-        prev_gc = PrevGC,
-        system_stats = SystemStats3
-    }}.
+    case os:type() of
+        {_, linux} ->
+            SystemStats = system_stats:proc_cpuinfo(system_stats_utils:new_stats()),
+            SystemStats2 = system_stats:proc_stat(SystemStats),
+            SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
+
+            {ok, #state {
+                key = [BaseKey, $.],
+                timer_ref = Ref,
+                prev_io = {In,Out},
+                prev_gc = PrevGC,
+                system_stats = SystemStats3
+            }};
+        _Else ->
+            {ok, #state {
+                key = [BaseKey, $.],
+                timer_ref = Ref,
+                prev_io = {In,Out},
+                prev_gc = PrevGC
+            }}
+    end.
 
 handle_call(_Msg, _From, State) ->
     {noreply, State}.
