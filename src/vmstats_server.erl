@@ -39,11 +39,18 @@ init(BaseKey) ->
     {{input, In}, {output, Out}} = erlang:statistics(io),
     PrevGC = erlang:statistics(garbage_collection),
 
-    case os:type() of
-        {_, linux} ->
+    case system_stats:supported_os() of
+        undefined ->
+            {ok, #state {
+                key = [BaseKey, $.],
+                timer_ref = Ref,
+                prev_io = {In,Out},
+                prev_gc = PrevGC
+            }};
+        _Else ->
             SystemStats = system_stats:proc_cpuinfo(system_stats_utils:new_stats()),
             SystemStats2 = system_stats:proc_stat(SystemStats),
-            SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
+            SystemStats3 = system_stats:proc_pidstat(os:getpid(), SystemStats2),
 
             {ok, #state {
                 key = [BaseKey, $.],
@@ -51,13 +58,6 @@ init(BaseKey) ->
                 prev_io = {In,Out},
                 prev_gc = PrevGC,
                 system_stats = SystemStats3
-            }};
-        _Else ->
-            {ok, #state {
-                key = [BaseKey, $.],
-                timer_ref = Ref,
-                prev_io = {In,Out},
-                prev_gc = PrevGC
             }}
     end.
 
@@ -122,19 +122,25 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
     {_, Reds} = erlang:statistics(reductions),
     statsderl:increment([Key, <<"reductions">>], Reds, 1.00),
 
-    case os:type() of
-        {_, linux} ->
+    case system_stats:supported_os() of
+        undefined ->
+            {noreply, State#state {
+                timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
+                prev_io = {In, Out},
+                prev_gc = GarbageCollector
+            }};
+        _Else ->
             % system load
-            SystemStats2 = system_stats:proc_load_avg(SystemStats),
+            SystemStats2 = system_stats:proc_loadavg(SystemStats),
             statsderl:gauge([Key, <<"system.load_1">>], SystemStats2#stats.load_1, 1.00),
             statsderl:gauge([Key, <<"system.load_5">>], SystemStats2#stats.load_5, 1.00),
             statsderl:gauge([Key, <<"system.load_15">>], SystemStats2#stats.load_15, 1.00),
 
             % system cpu %
-            SystemStats3 = system_stats:proc_pid_stat(os:getpid(), SystemStats2),
+            SystemStats3 = system_stats:proc_pidstat(os:getpid(), SystemStats2),
             SystemStats4 = system_stats:proc_stat(SystemStats3),
-            {Ucpu, Scpu} = system_stats_utils:cpu_percent(SystemStats, SystemStats4),
-            CpuPercent = trunc(SystemStats4#stats.cpu_cores * (Ucpu + Scpu)),
+            {CpuUser, CpuSystem} = system_stats_utils:cpu_percent(SystemStats, SystemStats4),
+            CpuPercent = trunc(SystemStats4#stats.cpu_cores * (CpuUser + CpuSystem)),
             statsderl:gauge([Key, <<"system.cpu_percent">>], CpuPercent, 1.00),
 
             % system memory
@@ -148,12 +154,6 @@ handle_info({timeout, TimerRef, ?TIMER_MSG}, #state {
                 prev_io = {In, Out},
                 prev_gc = GarbageCollector,
                 system_stats = SystemStats4
-            }};
-        _Else ->
-            {noreply, State#state {
-                timer_ref = erlang:start_timer(?DELAY, self(), ?TIMER_MSG),
-                prev_io = {In, Out},
-                prev_gc = GarbageCollector
             }}
     end;
 handle_info(_Msg, State) ->
