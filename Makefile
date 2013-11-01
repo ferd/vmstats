@@ -1,20 +1,18 @@
-.PHONY: all test clean edoc compile deps
 REBAR=./rebar
 
-all:
-	@$(REBAR) get-deps compile
+.PHONY: deps
 
-compile:
-	@$(REBAR) compile
-
-deps:
-	@$(REBAR) get-deps
+all: deps compile
 
 clean:
 	@$(REBAR) clean
+	@rm -rf deps ebin
 
-distclean:
-	@$(REBAR) clean delete-deps
+compile:
+	@echo "Running rebar compile..."
+	@$(REBAR) compile
 
-test:
-	@$(REBAR) eunit skip_deps=true
+deps:
+	@echo "Running rebar get-deps..."
+	@$(REBAR) get-deps
+	@$(REBAR) update-deps
