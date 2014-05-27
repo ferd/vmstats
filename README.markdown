@@ -34,6 +34,10 @@ That's because you should use tags for stable versions instead! The changelog be
 
 ## CHANGELOG ##
 
+### 1.0.0 ###
+- Updating rebar
+- Updating statsderl to 0.3.5
+
 ### 0.2.3 ###
 - Adding messages in queues metric, providing a global count of queued up messages in the system.
 

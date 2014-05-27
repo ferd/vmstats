@@ -7,3 +7,4 @@
 *.swp
 erl_crash.dump
 /.eunit
+/.rebar
