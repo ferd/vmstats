@@ -11,7 +11,7 @@
   {applications, [statsderl]},
   {modules, [vmstats, vmstats_sup, vmstats_server]},
   {env, [
-    %% {base_key, "vmstats"},
+    {base_key, "vmstats"},
     {delay, 1000}, % in milliseconds
     {sched_time, false}
   ]}

@@ -20,8 +20,7 @@
                 prev_gc :: {GCs::integer(), Words::integer(), 0}}).
 %%% INTERFACE
 start_link() ->
-    BaseKey = get_env(vmstats, base_key, "vmstats"),
-    start_link(BaseKey).
+    start_link(base_key()).
 
 %% the base key is passed from the supervisor. This function
 %% should not be called manually.
@@ -170,12 +169,9 @@ sched_time_available() ->
         error:badarg -> false
     end.
 
-
-
-
--spec get_env(atom(), atom(), term()) -> term().
-get_env(App, K, Default) ->
-    case application:get_env(App, K) of
-        {ok, V}   -> V;
-        undefined -> Default
+-spec base_key() -> term().
+base_key() ->
+    case application:get_env(vmstats, base_key) of
+        {ok, V} -> V;
+        undefined -> "vmstats"
     end.
