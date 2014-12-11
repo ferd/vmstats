@@ -4,7 +4,7 @@
 -module(vmstats_server).
 -behaviour(gen_server).
 %% Interface
--export([start_link/1]).
+-export([start_link/0, start_link/1]).
 %% Internal Exports
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          code_change/3, terminate/2]).
@@ -19,6 +19,10 @@
                 prev_io :: {In::integer(), Out::integer()},
                 prev_gc :: {GCs::integer(), Words::integer(), 0}}).
 %%% INTERFACE
+start_link() ->
+    BaseKey = get_env(vmstats, base_key, "vmstats"),
+    start_link(BaseKey).
+
 %% the base key is passed from the supervisor. This function
 %% should not be called manually.
 start_link(BaseKey) ->
@@ -166,3 +170,12 @@ sched_time_available() ->
         error:badarg -> false
     end.
 
+
+
+
+-spec get_env(atom(), atom(), term()) -> term().
+get_env(App, K, Default) ->
+    case application:get_env(App, K) of
+        {ok, V}   -> V;
+        undefined -> Default
+    end.

@@ -5,8 +5,8 @@
 -behaviour(application).
 -export([start/2, stop/1]).
 
-start(normal, []) -> % single node support. node ID in the key.
-    vmstats_sup:start_link("vmstats").
+start(normal, []) ->
+    vmstats_sup:start_link().
 
 stop(_) ->
     ok.
