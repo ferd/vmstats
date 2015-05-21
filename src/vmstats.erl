@@ -6,7 +6,15 @@
 -export([start/2, stop/1]).
 
 start(normal, []) ->
-    vmstats_sup:start_link().
+    vmstats_sup:start_link(base_key()).
 
 stop(_) ->
     ok.
+
+-spec base_key() -> term().
+base_key() ->
+    case application:get_env(vmstats, base_key) of
+        {ok, V} -> V;
+        undefined -> "vmstats"
+    end.
+

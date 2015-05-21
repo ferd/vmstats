@@ -1,12 +1,9 @@
 -module(vmstats_sup).
 -behaviour(supervisor).
 %% Interface
--export([start_link/0, start_link/1]).
+-export([start_link/1]).
 %% Internal Exports
 -export([init/1]).
-
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 start_link(BaseKey) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, [BaseKey]).
