@@ -1,20 +1,21 @@
+REBAR ?= rebar
+
 .PHONY: all test clean edoc compile deps
-REBAR=./rebar
 
 all:
-	@$(REBAR) get-deps compile
+	$(REBAR) get-deps compile
 
 compile:
-	@$(REBAR) compile
+	$(REBAR) compile
 
 deps:
-	@$(REBAR) get-deps
+	$(REBAR) get-deps
 
 clean:
-	@$(REBAR) clean
+	$(REBAR) clean
 
 distclean:
-	@$(REBAR) clean delete-deps
+	$(REBAR) clean delete-deps
 
 test:
-	@$(REBAR) eunit skip_deps=true
+	$(REBAR) eunit skip_deps=true

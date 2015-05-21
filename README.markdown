@@ -18,11 +18,15 @@ The different fields include:
 
 ## How to build ##
 
- `$ ./rebar compile`
+````sh
+$ rebar get-deps compile
+```
 
 or
 
- `$ make`
+```sh
+$ make
+```
 
 ## Why scheduler wall time statistics disabled by default? ##
 
