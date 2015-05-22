@@ -26,15 +26,15 @@ start_link(Sink, BaseKey) ->
 init({Sink, BaseKey}) ->
     {ok, Delay} = application:get_env(vmstats, delay),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
-    {{input,In},{output,Out}} = erlang:statistics(io),
-    PrevGC = erlang:statistics(garbage_collection),
+    {{input, In}, {output, Out}} = erlang:statistics(io),
+    {GCs, Words, _} = erlang:statistics(garbage_collection),
 
     State = #state{key = [BaseKey, $.],
                    sink = Sink,
                    timer_ref = Ref,
                    delay = Delay,
                    prev_io = {In, Out},
-                   prev_gc = PrevGC},
+                   prev_gc = {GCs, Words}},
 
     case {sched_time_available(), application:get_env(vmstats, sched_time)} of
         {true, {ok,true}} ->
@@ -91,14 +91,8 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
     Sink:gauge([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
 
     %% Incremental values
-    #state{prev_io={OldIn,OldOut}, prev_gc={OldGCs,OldWords,_}} = S,
-    {{input,In},{output,Out}} = erlang:statistics(io),
-    GC = {GCs, Words, _} = erlang:statistics(garbage_collection),
-
-    Sink:increment([K,"io.bytes_in"], In-OldIn, 1.00),
-    Sink:increment([K,"io.bytes_out"], Out-OldOut, 1.00),
-    Sink:increment([K,"gc.count"], GCs-OldGCs, 1.00),
-    Sink:increment([K,"gc.words_reclaimed"], Words-OldWords, 1.00),
+    IO = write_io_stats(Sink, [K, "io."], S),
+    GC = write_gc_stats(Sink, [K, "gc."], S),
 
     %% Reductions across the VM, excluding current time slice, already incremental
     {_, Reds} = erlang:statistics(reductions),
@@ -116,10 +110,10 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
              end
              || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_sched=NewSched, prev_io={In,Out}, prev_gc=GC}};
+                              prev_sched=NewSched, prev_io=IO, prev_gc=GC}};
         _ -> % disabled or unavailable
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_io={In,Out}, prev_gc=GC}}
+                              prev_io=IO, prev_gc=GC}}
     end;
 handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
     exit(forced_upgrade_restart);
@@ -156,3 +150,15 @@ sched_time_available() ->
     catch
         error:badarg -> false
     end.
+
+write_io_stats(Sink, Key, #state{prev_io = {PrevIn, PrevOut}}) ->
+    {{input, In}, {output, Out}} = erlang:statistics(io),
+    Sink:increment([Key, "bytes_in"], In - PrevIn, 1.00),
+    Sink:increment([Key, "bytes_out"], Out - PrevOut, 1.00),
+    {In, Out}.
+
+write_gc_stats(Sink, Key, #state{prev_gc = {PrevGCs, PrevWords}}) ->
+    {GCs, Words, _} = erlang:statistics(garbage_collection),
+    Sink:increment([Key, "count"], GCs - PrevGCs, 1.00),
+    Sink:increment([Key, "words_reclaimed"], Words - PrevWords, 1.00),
+    {GCs, Words}.
