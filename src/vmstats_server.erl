@@ -54,8 +54,8 @@ handle_cast(_Msg, State) ->
 
 handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, timer_ref=R}) ->
     %% Processes
-    Sink:gauge([K,"proc_count"], erlang:system_info(process_count), 1.00),
-    Sink:gauge([K,"proc_limit"], erlang:system_info(process_limit), 1.00),
+    Sink:gauge([K,"proc_count"], erlang:system_info(process_count)),
+    Sink:gauge([K,"proc_limit"], erlang:system_info(process_limit)),
 
     %% Messages in queues
     TotalMessages = lists:foldl(
@@ -68,17 +68,17 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
         0,
         processes()
     ),
-    Sink:gauge([K,"messages_in_queues"], TotalMessages, 1.00),
+    Sink:gauge([K,"messages_in_queues"], TotalMessages),
 
     %% Modules loaded
-    Sink:gauge([K,"modules"], length(code:all_loaded()), 1.00),
+    Sink:gauge([K,"modules"], length(code:all_loaded())),
 
     %% Queued up processes (lower is better)
-    Sink:gauge([K,"run_queue"], erlang:statistics(run_queue), 1.00),
+    Sink:gauge([K,"run_queue"], erlang:statistics(run_queue)),
 
     %% Error logger backlog (lower is better)
     {_, MQL} = process_info(whereis(error_logger), message_queue_len),
-    Sink:gauge([K,"error_logger_queue_len"], MQL, 1.00),
+    Sink:gauge([K,"error_logger_queue_len"], MQL),
 
     write_memory_stats(Sink, [K, "memory."]),
 
@@ -88,7 +88,7 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
 
     %% Reductions across the VM, excluding current time slice, already incremental
     {_, Reds} = erlang:statistics(reductions),
-    Sink:increment([K,"reductions"], Reds, 1.00),
+    Sink:increment([K,"reductions"], Reds),
 
     %% Scheduler wall time
     #state{sched_time=Sched, prev_sched=PrevSched} = S,
@@ -97,8 +97,8 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
             NewSched = lists:sort(erlang:statistics(scheduler_wall_time)),
             [begin
                 SSid = integer_to_list(Sid),
-                Sink:timing([K,"scheduler_wall_time.",SSid,".active"], Active, 1.00),
-                Sink:timing([K,"scheduler_wall_time.",SSid,".total"], Total, 1.00)
+                Sink:timing([K,"scheduler_wall_time.",SSid,".active"], Active),
+                Sink:timing([K,"scheduler_wall_time.",SSid,".total"], Total)
              end
              || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
             {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
@@ -145,21 +145,21 @@ sched_time_available() ->
 
 write_io_stats(Sink, Key, #state{prev_io = {PrevIn, PrevOut}}) ->
     {{input, In}, {output, Out}} = erlang:statistics(io),
-    Sink:increment([Key, "bytes_in"], In - PrevIn, 1.00),
-    Sink:increment([Key, "bytes_out"], Out - PrevOut, 1.00),
+    Sink:increment([Key, "bytes_in"], In - PrevIn),
+    Sink:increment([Key, "bytes_out"], Out - PrevOut),
     {In, Out}.
 
 write_gc_stats(Sink, Key, #state{prev_gc = {PrevGCs, PrevWords}}) ->
     {GCs, Words, _} = erlang:statistics(garbage_collection),
-    Sink:increment([Key, "count"], GCs - PrevGCs, 1.00),
-    Sink:increment([Key, "words_reclaimed"], Words - PrevWords, 1.00),
+    Sink:increment([Key, "count"], GCs - PrevGCs),
+    Sink:increment([Key, "words_reclaimed"], Words - PrevWords),
     {GCs, Words}.
 
 %% There are more options available, but not all were kept.
 %% Memory usage is in bytes.
 write_memory_stats(Sink, Key) ->
-    Sink:gauge([Key, "total"], erlang:memory(total), 1.00),
-    Sink:gauge([Key, "procs_used"], erlang:memory(processes_used), 1.00),
-    Sink:gauge([Key, "atom_used"], erlang:memory(atom_used), 1.00),
-    Sink:gauge([Key, "binary"], erlang:memory(binary), 1.00),
-    Sink:gauge([Key, "ets"], erlang:memory(ets), 1.00).
+    Sink:gauge([Key, "total"], erlang:memory(total)),
+    Sink:gauge([Key, "procs_used"], erlang:memory(processes_used)),
+    Sink:gauge([Key, "atom_used"], erlang:memory(atom_used)),
+    Sink:gauge([Key, "binary"], erlang:memory(binary)),
+    Sink:gauge([Key, "ets"], erlang:memory(ets)).
