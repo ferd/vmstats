@@ -39,7 +39,7 @@ init({Sink, BaseKey}) ->
     case {sched_time_available(), application:get_env(vmstats, sched_time)} of
         {true, {ok,true}} ->
             {ok, State#state{sched_time = enabled,
-                             prev_sched = lists:sort(erlang:statistics(scheduler_wall_time))}};
+                             prev_sched = scheduler_wall_time()}};
         {true, _} ->
             {ok, State#state{sched_time = disabled}};
         {false, _} ->
@@ -90,23 +90,12 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
     {_, Reds} = erlang:statistics(reductions),
     Sink:increment([K,"reductions"], Reds),
 
-    %% Scheduler wall time
-    #state{sched_time=Sched, prev_sched=PrevSched} = S,
-    case Sched of
-        enabled ->
-            NewSched = lists:sort(erlang:statistics(scheduler_wall_time)),
-            [begin
-                SSid = integer_to_list(Sid),
-                Sink:timing([K,"scheduler_wall_time.",SSid,".active"], Active),
-                Sink:timing([K,"scheduler_wall_time.",SSid,".total"], Total)
-             end
-             || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
-            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_sched=NewSched, prev_io=IO, prev_gc=GC}};
-        _ -> % disabled or unavailable
-            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_io=IO, prev_gc=GC}}
-    end;
+    Sched = write_sched_time_stats(Sink, [K, "scheduler_wall_time."], S),
+
+    Ref = erlang:start_timer(D, self(), ?TIMER_MSG),
+    {noreply, S#state{timer_ref = Ref,
+                      prev_sched = Sched,
+                      prev_io = IO, prev_gc = GC}};
 handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
     exit(forced_upgrade_restart);
 handle_info(_Msg, {state, _Key, SchedTime, _PrevSched, _TimerRef, _Delay}) ->
@@ -163,3 +152,18 @@ write_memory_stats(Sink, Key) ->
     Sink:gauge([Key, "atom_used"], erlang:memory(atom_used)),
     Sink:gauge([Key, "binary"], erlang:memory(binary)),
     Sink:gauge([Key, "ets"], erlang:memory(ets)).
+
+write_sched_time_stats(Sink, Key, #state{sched_time = enabled, prev_sched = PrevSched}) ->
+    Sched = scheduler_wall_time(),
+    [begin
+        LSid = integer_to_list(Sid),
+        Sink:timing([Key, LSid, ".active"], Active),
+        Sink:timing([Key, LSid, ".total"], Total)
+     end
+     || {Sid, Active, Total} <- wall_time_diff(PrevSched, Sched)],
+    Sched;
+
+write_sched_time_stats(_Sink, _Key, #state{prev_sched = PrevSched}) -> PrevSched.
+
+scheduler_wall_time() ->
+    lists:sort(erlang:statistics(scheduler_wall_time)).
