@@ -1,6 +1,6 @@
 # vmstats #
 
-vmstats is a tiny Erlang app that works in conjunction with [statsderl](https://github.com/lpgauth/statsderl) in order to generate information on the Erlang VM for graphite logs.
+vmstats is a tiny Erlang app that works in conjunction with a client app (e.g. [statsderl](https://github.com/lpgauth/statsderl)) in order to generate information on the Erlang VM for graphite logs.
 
 The different fields include:
  - the error\_logger queue length

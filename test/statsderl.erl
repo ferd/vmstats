@@ -1,7 +1,7 @@
 -module(statsderl).
--export([start_link/1, increment/3, gauge/3, called/0, stop/0]).
+-export([start_link/0, increment/3, gauge/3, called/0, stop/0]).
 
-start_link(_Name) ->
+start_link() ->
     spawn_link(fun() -> init() end).
 
 increment(Key, Value, SampleRate) ->
