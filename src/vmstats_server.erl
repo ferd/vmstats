@@ -80,15 +80,7 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, delay=D, time
     {_, MQL} = process_info(whereis(error_logger), message_queue_len),
     Sink:gauge([K,"error_logger_queue_len"], MQL, 1.00),
 
-    %% Memory usage. There are more options available, but not all were kept.
-    %% Memory usage is in bytes.
-    K2 = [K,"memory."],
-    Mem = erlang:memory(),
-    Sink:gauge([K2,"total"], proplists:get_value(total, Mem), 1.00),
-    Sink:gauge([K2,"procs_used"], proplists:get_value(processes_used,Mem), 1.00),
-    Sink:gauge([K2,"atom_used"], proplists:get_value(atom_used,Mem), 1.00),
-    Sink:gauge([K2,"binary"], proplists:get_value(binary, Mem), 1.00),
-    Sink:gauge([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
+    write_memory_stats(Sink, [K, "memory."]),
 
     %% Incremental values
     IO = write_io_stats(Sink, [K, "io."], S),
@@ -162,3 +154,12 @@ write_gc_stats(Sink, Key, #state{prev_gc = {PrevGCs, PrevWords}}) ->
     Sink:increment([Key, "count"], GCs - PrevGCs, 1.00),
     Sink:increment([Key, "words_reclaimed"], Words - PrevWords, 1.00),
     {GCs, Words}.
+
+%% There are more options available, but not all were kept.
+%% Memory usage is in bytes.
+write_memory_stats(Sink, Key) ->
+    Sink:gauge([Key, "total"], erlang:memory(total), 1.00),
+    Sink:gauge([Key, "procs_used"], erlang:memory(processes_used), 1.00),
+    Sink:gauge([Key, "atom_used"], erlang:memory(atom_used), 1.00),
+    Sink:gauge([Key, "binary"], erlang:memory(binary), 1.00),
+    Sink:gauge([Key, "ets"], erlang:memory(ets), 1.00).
