@@ -29,31 +29,21 @@ init({Sink, BaseKey}) ->
     {{input,In},{output,Out}} = erlang:statistics(io),
     PrevGC = erlang:statistics(garbage_collection),
 
-    State = #state{sink = Sink},
+    State = #state{key = [BaseKey, $.],
+                   sink = Sink,
+                   timer_ref = Ref,
+                   delay = Delay,
+                   prev_io = {In, Out},
+                   prev_gc = PrevGC},
 
     case {sched_time_available(), application:get_env(vmstats, sched_time)} of
         {true, {ok,true}} ->
-            {ok, State#state{key = [BaseKey,$.],
-                        timer_ref = Ref,
-                        delay = Delay,
-                        sched_time = enabled,
-                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time)),
-                        prev_io = {In,Out},
-                        prev_gc = PrevGC}};
+            {ok, State#state{sched_time = enabled,
+                             prev_sched = lists:sort(erlang:statistics(scheduler_wall_time))}};
         {true, _} ->
-            {ok, State#state{key = [BaseKey,$.],
-                        timer_ref = Ref,
-                        delay = Delay,
-                        sched_time = disabled,
-                        prev_io = {In,Out},
-                        prev_gc = PrevGC}};
+            {ok, State#state{sched_time = disabled}};
         {false, _} ->
-            {ok, State#state{key = [BaseKey,$.],
-                        timer_ref = Ref,
-                        delay = Delay,
-                        sched_time = unavailable,
-                        prev_io = {In,Out},
-                        prev_gc = PrevGC}}
+            {ok, State#state{sched_time = unavailable}}
     end.
 
 handle_call(_Msg, _From, State) ->
