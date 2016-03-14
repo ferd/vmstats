@@ -9,7 +9,7 @@ timer_500ms_test() ->
     application:set_env(vmstats, delay, 500),
     Key = "key",
     statsderl:start_link(),
-    {ok, Pid} = vmstats_server:start_link(statsderl, Key),
+    {ok, Pid} = vmstats_server:start_link(vmstats_statsderl, Key),
     unlink(Pid),
     timer:sleep(750),
     %% First match works
