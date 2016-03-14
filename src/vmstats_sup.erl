@@ -1,15 +1,12 @@
 -module(vmstats_sup).
 -behaviour(supervisor).
 %% Interface
--export([start_link/0, start_link/1]).
+-export([start_link/2]).
 %% Internal Exports
 -export([init/1]).
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-start_link(BaseKey) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [BaseKey]).
+start_link(Sink, BaseKey) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [Sink, BaseKey]).
 
 init(Args) ->
     %% The stats are mixed in for all nodes. Differentiate keys by node name
