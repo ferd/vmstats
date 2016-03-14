@@ -1,5 +1,10 @@
 -module(statsderl).
--export([start_link/0, increment/2, gauge/2, called/0, stop/0]).
+-behaviour(vmstats_sink).
+
+-export([collect/3, start_link/0, called/0, stop/0]).
+
+collect(counter, Key, Value) -> increment(Key, Value);
+collect(gauge, Key, Value)   -> gauge(Key, Value).
 
 start_link() ->
     spawn_link(fun() -> init() end).
