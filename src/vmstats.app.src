@@ -12,6 +12,7 @@
   {env, [
     {base_key, "vmstats"},
     {delay, 1000}, % in milliseconds
+    {key_separator, $.},
     {sched_time, false}
   ]}
 ]}.
