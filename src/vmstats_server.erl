@@ -1,17 +1,18 @@
 %%% Main worker for vmstats. This module sits in a loop fired off with
-%%% timers with the main objective of routinely sending data to
-%%% statsderl.
+%%% timers with the main objective of routinely sending data to Sink.
 -module(vmstats_server).
 -behaviour(gen_server).
 %% Interface
--export([start_link/0, start_link/1]).
+-export([start_link/2]).
 %% Internal Exports
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          code_change/3, terminate/2]).
 
 -define(TIMER_MSG, '#delay').
 
--record(state, {key :: string(),
+-record(state, {sink :: atom(),
+                key :: string(),
+                key_separator :: char() | iodata(),
                 sched_time :: enabled | disabled | unavailable,
                 prev_sched :: [{integer(), integer(), integer()}],
                 timer_ref :: reference(),
@@ -19,43 +20,33 @@
                 prev_io :: {In::integer(), Out::integer()},
                 prev_gc :: {GCs::integer(), Words::integer(), 0}}).
 %%% INTERFACE
-start_link() ->
-    start_link(base_key()).
-
-%% the base key is passed from the supervisor. This function
-%% should not be called manually.
-start_link(BaseKey) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, BaseKey, []).
+start_link(Sink, BaseKey) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, {Sink, BaseKey}, []).
 
 %%% INTERNAL EXPORTS
-init(BaseKey) ->
+init({Sink, BaseKey}) ->
     {ok, Delay} = application:get_env(vmstats, delay),
+    {ok, KeySeparator} = application:get_env(vmstats, key_separator),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
-    {{input,In},{output,Out}} = erlang:statistics(io),
-    PrevGC = erlang:statistics(garbage_collection),
+    {{input, In}, {output, Out}} = erlang:statistics(io),
+    {GCs, Words, _} = erlang:statistics(garbage_collection),
+
+    State = #state{key = [BaseKey, KeySeparator],
+                   key_separator = KeySeparator,
+                   sink = Sink,
+                   timer_ref = Ref,
+                   delay = Delay,
+                   prev_io = {In, Out},
+                   prev_gc = {GCs, Words}},
+
     case {sched_time_available(), application:get_env(vmstats, sched_time)} of
         {true, {ok,true}} ->
-            {ok, #state{key = [BaseKey,$.],
-                        timer_ref = Ref,
-                        delay = Delay,
-                        sched_time = enabled,
-                        prev_sched = lists:sort(erlang:statistics(scheduler_wall_time)),
-                        prev_io = {In,Out},
-                        prev_gc = PrevGC}};
+            {ok, State#state{sched_time = enabled,
+                             prev_sched = scheduler_wall_time()}};
         {true, _} ->
-            {ok, #state{key = [BaseKey,$.],
-                        timer_ref = Ref,
-                        delay = Delay,
-                        sched_time = disabled,
-                        prev_io = {In,Out},
-                        prev_gc = PrevGC}};
+            {ok, State#state{sched_time = disabled}};
         {false, _} ->
-            {ok, #state{key = [BaseKey,$.],
-                        timer_ref = Ref,
-                        delay = Delay,
-                        sched_time = unavailable,
-                        prev_io = {In,Out},
-                        prev_gc = PrevGC}}
+            {ok, State#state{sched_time = unavailable}}
     end.
 
 handle_call(_Msg, _From, State) ->
@@ -64,10 +55,10 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) ->
+handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator=KS, delay=D, timer_ref=R}) ->
     %% Processes
-    statsderl:gauge([K,"proc_count"], erlang:system_info(process_count), 1.00),
-    statsderl:gauge([K,"proc_limit"], erlang:system_info(process_limit), 1.00),
+    Sink:collect(gauge, [K,"proc_count"], erlang:system_info(process_count)),
+    Sink:collect(gauge, [K,"proc_limit"], erlang:system_info(process_limit)),
 
     %% Messages in queues
     TotalMessages = lists:foldl(
@@ -80,59 +71,35 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{key=K, delay=D, timer_ref=R}) -
         0,
         processes()
     ),
-    statsderl:gauge([K,"messages_in_queues"], TotalMessages, 1.00),
+    Sink:collect(gauge, [K,"messages_in_queues"], TotalMessages),
 
     %% Modules loaded
-    statsderl:gauge([K,"modules"], length(code:all_loaded()), 1.00),
+    Sink:collect(gauge, [K,"modules"], length(code:all_loaded())),
 
     %% Queued up processes (lower is better)
-    statsderl:gauge([K,"run_queue"], erlang:statistics(run_queue), 1.00),
+    Sink:collect(gauge, [K,"run_queue"], erlang:statistics(run_queue)),
 
     %% Error logger backlog (lower is better)
     {_, MQL} = process_info(whereis(error_logger), message_queue_len),
-    statsderl:gauge([K,"error_logger_queue_len"], MQL, 1.00),
+    Sink:collect(gauge, [K,"error_logger_queue_len"], MQL),
 
-    %% Memory usage. There are more options available, but not all were kept.
-    %% Memory usage is in bytes.
-    K2 = [K,"memory."],
-    Mem = erlang:memory(),
-    statsderl:gauge([K2,"total"], proplists:get_value(total, Mem), 1.00),
-    statsderl:gauge([K2,"procs_used"], proplists:get_value(processes_used,Mem), 1.00),
-    statsderl:gauge([K2,"atom_used"], proplists:get_value(atom_used,Mem), 1.00),
-    statsderl:gauge([K2,"binary"], proplists:get_value(binary, Mem), 1.00),
-    statsderl:gauge([K2,"ets"], proplists:get_value(ets, Mem), 1.00),
+    collect_memory_stats(Sink, [K, "memory", KS]),
 
     %% Incremental values
-    #state{prev_io={OldIn,OldOut}, prev_gc={OldGCs,OldWords,_}} = S,
-    {{input,In},{output,Out}} = erlang:statistics(io),
-    GC = {GCs, Words, _} = erlang:statistics(garbage_collection),
-
-    statsderl:increment([K,"io.bytes_in"], In-OldIn, 1.00),
-    statsderl:increment([K,"io.bytes_out"], Out-OldOut, 1.00),
-    statsderl:increment([K,"gc.count"], GCs-OldGCs, 1.00),
-    statsderl:increment([K,"gc.words_reclaimed"], Words-OldWords, 1.00),
+    IO = collect_io_stats(Sink, [K, "io", KS], S),
+    GC = collect_gc_stats(Sink, [K, "gc", KS], S),
 
     %% Reductions across the VM, excluding current time slice, already incremental
     {_, Reds} = erlang:statistics(reductions),
-    statsderl:increment([K,"reductions"], Reds, 1.00),
+    Sink:collect(counter, [K,"reductions"], Reds),
 
-    %% Scheduler wall time
-    #state{sched_time=Sched, prev_sched=PrevSched} = S,
-    case Sched of
-        enabled ->
-            NewSched = lists:sort(erlang:statistics(scheduler_wall_time)),
-            [begin
-                SSid = integer_to_list(Sid),
-                statsderl:timing([K,"scheduler_wall_time.",SSid,".active"], Active, 1.00),
-                statsderl:timing([K,"scheduler_wall_time.",SSid,".total"], Total, 1.00)
-             end
-             || {Sid, Active, Total} <- wall_time_diff(PrevSched, NewSched)],
-            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_sched=NewSched, prev_io={In,Out}, prev_gc=GC}};
-        _ -> % disabled or unavailable
-            {noreply, S#state{timer_ref=erlang:start_timer(D, self(), ?TIMER_MSG),
-                              prev_io={In,Out}, prev_gc=GC}}
-    end;
+    SchedKey = [K, "scheduler_wall_time", KS],
+    Sched = collect_sched_time_stats(Sink, SchedKey, S),
+
+    Ref = erlang:start_timer(D, self(), ?TIMER_MSG),
+    {noreply, S#state{timer_ref = Ref,
+                      prev_sched = Sched,
+                      prev_io = IO, prev_gc = GC}};
 handle_info(_Msg, {state, _Key, _TimerRef, _Delay}) ->
     exit(forced_upgrade_restart);
 handle_info(_Msg, {state, _Key, SchedTime, _PrevSched, _TimerRef, _Delay}) ->
@@ -169,9 +136,38 @@ sched_time_available() ->
         error:badarg -> false
     end.
 
--spec base_key() -> term().
-base_key() ->
-    case application:get_env(vmstats, base_key) of
-        {ok, V} -> V;
-        undefined -> "vmstats"
-    end.
+collect_io_stats(Sink, Key, #state{prev_io = {PrevIn, PrevOut}}) ->
+    {{input, In}, {output, Out}} = erlang:statistics(io),
+    Sink:collect(counter, [Key, "bytes_in"], In - PrevIn),
+    Sink:collect(counter, [Key, "bytes_out"], Out - PrevOut),
+    {In, Out}.
+
+collect_gc_stats(Sink, Key, #state{prev_gc = {PrevGCs, PrevWords}}) ->
+    {GCs, Words, _} = erlang:statistics(garbage_collection),
+    Sink:collect(counter, [Key, "count"], GCs - PrevGCs),
+    Sink:collect(counter, [Key, "words_reclaimed"], Words - PrevWords),
+    {GCs, Words}.
+
+%% There are more options available, but not all were kept.
+%% Memory usage is in bytes.
+collect_memory_stats(Sink, Key) ->
+    Sink:collect(gauge, [Key, "total"], erlang:memory(total)),
+    Sink:collect(gauge, [Key, "procs_used"], erlang:memory(processes_used)),
+    Sink:collect(gauge, [Key, "atom_used"], erlang:memory(atom_used)),
+    Sink:collect(gauge, [Key, "binary"], erlang:memory(binary)),
+    Sink:collect(gauge, [Key, "ets"], erlang:memory(ets)).
+
+collect_sched_time_stats(Sink, Key, #state{sched_time = enabled, prev_sched = PrevSched, key_separator = KS}) ->
+    Sched = scheduler_wall_time(),
+    [begin
+        LSid = integer_to_list(Sid),
+        Sink:collect(timing, [Key, LSid, KS, "active"], Active),
+        Sink:collect(timing, [Key, LSid, KS, "total"], Total)
+     end
+     || {Sid, Active, Total} <- wall_time_diff(PrevSched, Sched)],
+    Sched;
+
+collect_sched_time_stats(_Sink, _Key, #state{prev_sched = PrevSched}) -> PrevSched.
+
+scheduler_wall_time() ->
+    lists:sort(erlang:statistics(scheduler_wall_time)).
