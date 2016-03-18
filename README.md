@@ -38,7 +38,7 @@ The following is a list of the possible options for the configuration of the
   * `sink` - (module) a module that implements the `vmstats_sink` behaviour; vmstats metrics will be collected through this module.
   * `base_key` - (string) every metric name is prepended with this base key. Defaults to `"vmstats"`.
   * `key_separator` - (char) used as a separator between the parts of metric keys. Defaults to `$.`.
-  * `delay` - (integer) the time (in milliseconds) between metric gatherings. Defaults to `1000` (1s).
+  * `interval` - (integer) the time (in milliseconds) between metric gatherings. Defaults to `1000` (1s).
   * `sched_time` - (boolean) whether to gather statistics about scheduler wall time. Defaults to `true`.
 
 ### `vmstats_sink` behaviour

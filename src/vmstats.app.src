@@ -10,7 +10,7 @@
   {modules, [vmstats, vmstats_sup, vmstats_server]},
   {env, [
     {base_key, "vmstats"},
-    {delay, 1000}, % in milliseconds
+    {interval, 1000}, % in milliseconds
     {key_separator, $.},
     {sched_time, true}
   ]},

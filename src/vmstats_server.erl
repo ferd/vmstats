@@ -8,7 +8,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          code_change/3, terminate/2]).
 
--define(TIMER_MSG, '#delay').
+-define(TIMER_MSG, '#interval').
 
 -record(state, {sink :: atom(),
                 key :: string(),
@@ -16,7 +16,7 @@
                 sched_time :: enabled | disabled,
                 prev_sched :: [{integer(), integer(), integer()}],
                 timer_ref :: reference(),
-                delay :: integer(), % milliseconds
+                interval :: integer(), % milliseconds
                 prev_io :: {In::integer(), Out::integer()},
                 prev_gc :: {GCs::integer(), Words::integer(), 0}}).
 %%% INTERFACE
@@ -25,11 +25,11 @@ start_link(Sink, BaseKey) ->
 
 %%% INTERNAL EXPORTS
 init({Sink, BaseKey}) ->
-    {ok, Delay} = application:get_env(vmstats, delay),
+    {ok, Interval} = application:get_env(vmstats, interval),
     {ok, KeySeparator} = application:get_env(vmstats, key_separator),
     {ok, SchedTimeEnabled} = application:get_env(vmstats, sched_time),
 
-    Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
+    Ref = erlang:start_timer(Interval, self(), ?TIMER_MSG),
     {{input, In}, {output, Out}} = erlang:statistics(io),
     {GCs, Words, _} = erlang:statistics(garbage_collection),
 
@@ -37,7 +37,7 @@ init({Sink, BaseKey}) ->
                    key_separator = KeySeparator,
                    sink = Sink,
                    timer_ref = Ref,
-                   delay = Delay,
+                   interval = Interval,
                    prev_io = {In, Out},
                    prev_gc = {GCs, Words}},
 
@@ -56,7 +56,7 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator=KS, delay=D, timer_ref=R}) ->
+handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator=KS, interval=I, timer_ref=R}) ->
     %% Processes
     Sink:collect(gauge, [K,"proc_count"], erlang:system_info(process_count)),
     Sink:collect(gauge, [K,"proc_limit"], erlang:system_info(process_limit)),
@@ -97,7 +97,7 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     SchedKey = [K, "scheduler_wall_time", KS],
     Sched = collect_sched_time_stats(Sink, SchedKey, S),
 
-    Ref = erlang:start_timer(D, self(), ?TIMER_MSG),
+    Ref = erlang:start_timer(I, self(), ?TIMER_MSG),
     {noreply, S#state{timer_ref = Ref,
                       prev_sched = Sched,
                       prev_io = IO, prev_gc = GC}};
