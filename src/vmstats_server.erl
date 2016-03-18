@@ -13,7 +13,7 @@
 -record(state, {sink :: atom(),
                 key :: string(),
                 key_separator :: char() | iodata(),
-                sched_time :: enabled | disabled | unavailable,
+                sched_time :: enabled | disabled,
                 prev_sched :: [{integer(), integer(), integer()}],
                 timer_ref :: reference(),
                 delay :: integer(), % milliseconds
@@ -27,6 +27,8 @@ start_link(Sink, BaseKey) ->
 init({Sink, BaseKey}) ->
     {ok, Delay} = application:get_env(vmstats, delay),
     {ok, KeySeparator} = application:get_env(vmstats, key_separator),
+    {ok, SchedTimeEnabled} = application:get_env(vmstats, sched_time),
+
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
     {{input, In}, {output, Out}} = erlang:statistics(io),
     {GCs, Words, _} = erlang:statistics(garbage_collection),
@@ -39,14 +41,13 @@ init({Sink, BaseKey}) ->
                    prev_io = {In, Out},
                    prev_gc = {GCs, Words}},
 
-    case {sched_time_available(), application:get_env(vmstats, sched_time)} of
-        {true, {ok,true}} ->
+    erlang:system_flag(scheduler_wall_time, true),
+    case SchedTimeEnabled of
+        true ->
             {ok, State#state{sched_time = enabled,
                              prev_sched = scheduler_wall_time()}};
-        {true, _} ->
-            {ok, State#state{sched_time = disabled}};
-        {false, _} ->
-            {ok, State#state{sched_time = unavailable}}
+        false ->
+            {ok, State#state{sched_time = disabled}}
     end.
 
 handle_call(_Msg, _From, State) ->
@@ -128,13 +129,6 @@ terminate(_Reason, _State) ->
 wall_time_diff(T1, T2) ->
     [{I, Active2-Active1, Total2-Total1}
      || {{I, Active1, Total1}, {I, Active2, Total2}} <- lists:zip(T1,T2)].
-
-sched_time_available() ->
-    try erlang:system_flag(scheduler_wall_time, true) of
-        _ -> true
-    catch
-        error:badarg -> false
-    end.
 
 collect_io_stats(Sink, Key, #state{prev_io = {PrevIn, PrevOut}}) ->
     {{input, In}, {output, Out}} = erlang:statistics(io),

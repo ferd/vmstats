@@ -28,10 +28,6 @@ or
 $ make
 ```
 
-## Why scheduler wall time statistics disabled by default?
-
-Scheduler wall time statistics are now disabled by default to keep in line with 0.1.0 behaviour, and after some bugs being reported when the Erlang scheduler would lock on such calls in R15B01 a few times in a day, never to unlock again. People who want to take the risk of running these statistics can do it by setting the `vmstats` env variable `sched_time` to `true`.
-
 ## I was basing myself on 'master' and stuff started breaking!
 
 That's because you should use tags for stable versions instead! The changelog below should let you know what to expect.
