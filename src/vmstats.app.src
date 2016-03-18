@@ -13,5 +13,8 @@
     {delay, 1000}, % in milliseconds
     {key_separator, $.},
     {sched_time, true}
-  ]}
+  ]},
+  {contributors, ["Fred Hebert"]},
+  {licenses, ["BSD-3"]},
+  {links, [{"GitHub", "https://github.com/ferd/vmstats"}]}
 ]}.
