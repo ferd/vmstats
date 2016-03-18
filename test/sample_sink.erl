@@ -1,19 +1,15 @@
--module(statsderl).
+-module(sample_sink).
 -behaviour(vmstats_sink).
 
 -export([collect/3, start_link/0, called/0, stop/0]).
 
-collect(counter, Key, Value) -> increment(Key, Value);
-collect(gauge, Key, Value)   -> gauge(Key, Value).
+collect(counter, Key, Value) ->
+    call({counter, Key, Value});
+collect(gauge, Key, Value) ->
+    call({gauge, Key, Value}).
 
 start_link() ->
     spawn_link(fun() -> init() end).
-
-increment(Key, Value) ->
-    call({increment, Key, Value}).
-
-gauge(Key, Value) ->
-    call({gauge, Key, Value}).
 
 called() -> call(called).
 
@@ -25,7 +21,7 @@ init() ->
 
 loop(Stack) ->
     receive
-        {From, {increment, K, D}} ->
+        {From, {counter, K, D}} ->
             reply(From, ok),
             loop([{K,D}|Stack]);
         {From, {gauge, K, D}} ->

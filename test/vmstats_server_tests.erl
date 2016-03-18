@@ -1,17 +1,13 @@
 -module(vmstats_server_tests).
 -include_lib("eunit/include/eunit.hrl").
 
-%% Gotta mock some stuff for this to work. The module
-%% statsderl used here is a fake copy for the sake of
-%% being able to write tests without dependencies.
-
 timer_500ms_test() ->
     application:set_env(vmstats, interval, 500),
     application:set_env(vmstats, key_separator, $.),
     application:set_env(vmstats, sched_time, false),
     Key = "key",
-    statsderl:start_link(),
-    {ok, Pid} = vmstats_server:start_link(statsderl, Key),
+    sample_sink:start_link(),
+    {ok, Pid} = vmstats_server:start_link(sample_sink, Key),
     unlink(Pid),
     timer:sleep(750),
     %% First match works
@@ -32,7 +28,7 @@ timer_500ms_test() ->
          {"key.proc_limit", _},
          {"key.reductions", _},
          {"key.run_queue", _}],
-        lists:sort([{lists:flatten(K), V} || {K, V} <- statsderl:called()])
+        lists:sort([{lists:flatten(K), V} || {K, V} <- sample_sink:called()])
     ),
     timer:sleep(600),
     exit(Pid, shutdown),
@@ -54,7 +50,7 @@ timer_500ms_test() ->
          {"key.proc_limit", _},
          {"key.reductions", _},
          {"key.run_queue", _}],
-        lists:sort([{lists:flatten(K), V} || {K, V} <- statsderl:called()])
+        lists:sort([{lists:flatten(K), V} || {K, V} <- sample_sink:called()])
     ),
-    ?assertEqual([], lists:sort(statsderl:called())),
-    statsderl:stop().
+    ?assertEqual([], lists:sort(sample_sink:called())),
+    sample_sink:stop().
