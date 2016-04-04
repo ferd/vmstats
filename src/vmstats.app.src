@@ -1,6 +1,6 @@
 {application, vmstats, [
   {description, "Tiny application to gather VM statistics"},
-  {vsn, "1.0.1"},
+  {vsn, "2.0.0"},
   {registered, [vmstats_sup, vmstats_server]},
   {applications, [
     kernel,
