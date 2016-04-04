@@ -1,18 +1,20 @@
 {application, vmstats, [
-  {description, "Tiny application to gather VM statistics for StatsD client"},
+  {description, "Tiny application to gather VM statistics"},
   {vsn, "1.0.1"},
   {registered, [vmstats_sup, vmstats_server]},
   {applications, [
     kernel,
-    stdlib,
-    statsderl
+    stdlib
   ]},
   {mod, {vmstats, []}},
-  {applications, [statsderl]},
   {modules, [vmstats, vmstats_sup, vmstats_server]},
   {env, [
     {base_key, "vmstats"},
-    {delay, 1000}, % in milliseconds
-    {sched_time, false}
-  ]}
+    {interval, 1000}, % in milliseconds
+    {key_separator, $.},
+    {sched_time, true}
+  ]},
+  {contributors, ["Fred Hebert"]},
+  {licenses, ["BSD-3"]},
+  {links, [{"GitHub", "https://github.com/ferd/vmstats"}]}
 ]}.
