@@ -61,6 +61,10 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     Sink:collect(gauge, [K,"proc_count"], erlang:system_info(process_count)),
     Sink:collect(gauge, [K,"proc_limit"], erlang:system_info(process_limit)),
 
+    %% Ports
+    Sink:collect(gauge, [K,"port_count"], erlang:system_info(port_count)),
+    Sink:collect(gauge, [K,"port_limit"], erlang:system_info(port_limit)),
+
     %% Messages in queues
     TotalMessages = lists:foldl(
         fun(Pid, Acc) ->
