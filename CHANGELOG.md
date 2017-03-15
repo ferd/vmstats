@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+- Adding port counts and port limit gauges
+
 ## 2.0.0
 
 - Removing the `statsderl` dependency.

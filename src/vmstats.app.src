@@ -1,6 +1,6 @@
 {application, vmstats, [
   {description, "Tiny application to gather VM statistics"},
-  {vsn, "2.0.0"},
+  {vsn, "2.1.0"},
   {registered, [vmstats_sup, vmstats_server]},
   {applications, [
     kernel,
@@ -14,7 +14,7 @@
     {key_separator, $.},
     {sched_time, true}
   ]},
-  {contributors, ["Fred Hebert"]},
+  {maintainers, ["Fred Hebert"]},
   {licenses, ["BSD-3"]},
   {links, [{"GitHub", "https://github.com/ferd/vmstats"}]}
 ]}.
