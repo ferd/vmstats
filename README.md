@@ -40,6 +40,9 @@ The following is a list of the possible options for the configuration of the
   * `key_separator` - (char) used as a separator between the parts of metric keys. Defaults to `$.`.
   * `interval` - (integer) the time (in milliseconds) between metric gatherings. Defaults to `1000` (1s).
   * `sched_time` - (boolean) whether to gather statistics about scheduler wall time. Defaults to `true`.
+  * `memory_metrics` - (proplist of metric and key) what fields to collect statistics for.
+                       Available fields can be found [here](http://erlang.org/doc/man/erlang.html#memory-1).
+                       Default list is `[{total, total}, {processes_used, procs_used}, {atom_used, atom_used}, {binary, binary}, {ets, ets}]`.
 
 ### `vmstats_sink` behaviour
 
