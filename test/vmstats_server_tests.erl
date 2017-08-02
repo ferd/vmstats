@@ -5,6 +5,14 @@ timer_500ms_test() ->
     application:set_env(vmstats, interval, 500),
     application:set_env(vmstats, key_separator, $.),
     application:set_env(vmstats, sched_time, false),
+    application:set_env(vmstats, memory_metrics, [
+      {total, total},
+      {processes_used, procs_used},
+      {atom_used, atom_used},
+      {binary, binary},
+      {ets, ets}
+    ]),
+
     Key = "key",
     sample_sink:start_link(),
     {ok, Pid} = vmstats_server:start_link(sample_sink, Key),

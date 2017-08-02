@@ -12,7 +12,14 @@
     {base_key, "vmstats"},
     {interval, 1000}, % in milliseconds
     {key_separator, $.},
-    {sched_time, true}
+    {sched_time, true},
+    {memory_metrics, [
+      {total, total},
+      {processes_used, procs_used},
+      {atom_used, atom_used},
+      {binary, binary},
+      {ets, ets}
+    ]}
   ]},
   {maintainers, ["Fred Hebert"]},
   {licenses, ["BSD-3"]},
