@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+
+- Making memory metrics configurable (thanks to @gootik)
+
 ## 2.1.0
 
 - Adding port counts and port limit gauges
