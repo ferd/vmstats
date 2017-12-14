@@ -72,7 +72,7 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     try
         Sink:collect(gauge, [K, "atom_count"], erlang:system_info(atom_count))
     catch
-        _:_ -> ok
+        _:badarg -> ok
     end,
 
     %% Messages in queues
