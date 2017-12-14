@@ -19,7 +19,7 @@
                 timer_ref :: reference(),
                 interval :: integer(), % milliseconds
                 prev_io :: {In::integer(), Out::integer()},
-                prev_gc :: {GCs::integer(), Words::integer(), 0}}).
+                prev_gc :: {GCs::integer(), Words::integer()}}).
 %%% INTERFACE
 start_link(Sink, BaseKey) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, {Sink, BaseKey}, []).
@@ -67,6 +67,13 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     %% Ports
     Sink:collect(gauge, [K,"port_count"], erlang:system_info(port_count)),
     Sink:collect(gauge, [K,"port_limit"], erlang:system_info(port_limit)),
+
+    %% Atom count, working only on Erlang 20+
+    try
+        Sink:collect(gauge, [K, "atom_count"], erlang:system_info(atom_count))
+    catch
+        _:_ -> ok
+    end,
 
     %% Messages in queues
     TotalMessages = lists:foldl(
