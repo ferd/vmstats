@@ -69,8 +69,8 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     Sink:collect(gauge, [K,"port_limit"], erlang:system_info(port_limit)),
 
     %% Atom count, working only on Erlang 20+
-    try
-        Sink:collect(gauge, [K, "atom_count"], erlang:system_info(atom_count))
+    try erlang:system_info(atom_count) of
+        AtomCount -> Sink:collect(gauge, [K, "atom_count"], AtomCount)
     catch
         _:badarg -> ok
     end,
