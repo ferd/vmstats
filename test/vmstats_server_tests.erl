@@ -20,7 +20,8 @@ timer_500ms_test() ->
     timer:sleep(750),
     %% First match works
     ?assertMatch(
-        [{"key.error_logger_queue_len", _},
+        [{"key.atom_count", _},
+         {"key.error_logger_queue_len", _},
          {"key.gc.count", _},
          {"key.gc.words_reclaimed", _},
          {"key.io.bytes_in", _},
@@ -44,7 +45,8 @@ timer_500ms_test() ->
     exit(Pid, shutdown),
     %% Done, we know it loops!
     ?assertMatch(
-        [{"key.error_logger_queue_len", _},
+        [{"key.atom_count", _},
+         {"key.error_logger_queue_len", _},
          {"key.gc.count", _},
          {"key.gc.words_reclaimed", _},
          {"key.io.bytes_in", _},

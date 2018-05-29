@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.0
+
+- Adding Atom counts (thanks to @Coffei and @lexmag)
+
 ## 2.2.0
 
 - Making memory metrics configurable (thanks to @gootik)
