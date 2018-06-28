@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.1
+
+- OTP-21 Support (thanks to @hauleth)
+
 ## 2.3.0
 
 - Adding Atom counts (thanks to @Coffei and @lexmag)
