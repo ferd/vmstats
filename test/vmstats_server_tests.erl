@@ -71,15 +71,15 @@ timer_500ms_test_() ->
      fun teardown/1,
      fun(Pid) ->
              [
-              {?LINE, fun() ->
-                              timer:sleep(750),
-                              ?assertMatch(?MATCH, get_values())
-                      end},
-              {?LINE, fun() ->
-                              timer:sleep(600),
-                              exit(Pid, shutdown),
-                              ?assertMatch(?MATCH, get_values())
-                      end},
+              ?_test(begin
+                         timer:sleep(750),
+                         ?assertMatch(?MATCH, get_values())
+                     end),
+              ?_test(begin
+                         timer:sleep(600),
+                         exit(Pid, shutdown),
+                         ?assertMatch(?MATCH, get_values())
+                     end),
               ?_assertEqual([], get_values())
              ]
      end}.

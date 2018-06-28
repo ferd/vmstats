@@ -98,7 +98,7 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     case whereis(error_logger) of
         undefined -> ok ;
         Pid ->
-            {_, MQL} = process_info(whereis, message_queue_len),
+            {_, MQL} = process_info(Pid, message_queue_len),
             Sink:collect(gauge, [K,"error_logger_queue_len"], MQL)
     end,
 
