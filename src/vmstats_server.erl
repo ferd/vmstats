@@ -95,8 +95,12 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     Sink:collect(gauge, [K,"run_queue"], erlang:statistics(run_queue)),
 
     %% Error logger backlog (lower is better)
-    {_, MQL} = process_info(whereis(error_logger), message_queue_len),
-    Sink:collect(gauge, [K,"error_logger_queue_len"], MQL),
+    case whereis(error_logger) of
+        undefined -> ok ;
+        Pid ->
+            {_, MQL} = process_info(whereis, message_queue_len),
+            Sink:collect(gauge, [K,"error_logger_queue_len"], MQL)
+    end,
 
     collect_memory_stats(Sink, [K, "memory", KS], MM),
 
