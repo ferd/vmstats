@@ -3,7 +3,15 @@
 %%% over its lifetime, helping diagnose or prevent problems in the long run.
 -module(vmstats).
 -behaviour(application).
--export([start/2, stop/1]).
+-export([start/2, stop/1, child_spec/2]).
+
+child_spec(Sink, BaseKey) ->
+    {vmstats,
+     {vmstats_server, start_link, [Sink, BaseKey]},
+     permanent,
+     1000,
+     worker,
+     [vmstats_server]}.
 
 start(normal, []) ->
     {ok, Sink} = application:get_env(vmstats, sink),
