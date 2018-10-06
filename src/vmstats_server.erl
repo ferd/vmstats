@@ -94,6 +94,11 @@ handle_info({timeout, R, ?TIMER_MSG}, S = #state{sink=Sink, key=K, key_separator
     %% Queued up processes (lower is better)
     Sink:collect(gauge, [K,"run_queue"], erlang:statistics(run_queue)),
 
+    %% VN uptime stats.
+    Sink:collect(timing, [K, "vm_uptime"],
+                 erlang:element(1,
+                                erlang:statistics(wall_clock))),
+
     %% Error logger backlog (lower is better)
     case whereis(error_logger) of
         undefined -> ok ;
