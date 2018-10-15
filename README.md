@@ -17,6 +17,7 @@ The different metrics that vmstats gathers include:
  - reduction increment count per interval
  - IO data (bytes in and out) per interval
  - global amount of messages in queues on a node
+ - the VM uptime
 
 ## Usage
 
