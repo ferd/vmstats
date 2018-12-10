@@ -19,7 +19,8 @@
          {"key.proc_count", _},
          {"key.proc_limit", _},
          {"key.reductions", _},
-         {"key.run_queue", _}]).
+         {"key.run_queue", _},
+         {"key.vm_uptime", _}]).
 -else.
 -define(MATCH, [{"key.atom_count", _},
          {"key.error_logger_queue_len", _},
@@ -39,7 +40,8 @@
          {"key.proc_count", _},
          {"key.proc_limit", _},
          {"key.reductions", _},
-         {"key.run_queue", _}]).
+         {"key.run_queue", _},
+         {"key.vm_uptime", _}]).
 -endif.
 
 setup() ->

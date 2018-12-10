@@ -3,10 +3,9 @@
 
 -export([collect/3, start_link/0, called/0, stop/0]).
 
-collect(counter, Key, Value) ->
-    call({counter, Key, Value});
-collect(gauge, Key, Value) ->
-    call({gauge, Key, Value}).
+collect(Type, Key, Value) when Type =:= timing; Type =:= gauge; Type =:= counter ->
+    K = lists:flatten(Key),
+    call({store, K, Value}).
 
 start_link() ->
     spawn_link(fun() -> init() end).
@@ -21,10 +20,7 @@ init() ->
 
 loop(Stack) ->
     receive
-        {From, {counter, K, D}} ->
-            reply(From, ok),
-            loop([{K,D}|Stack]);
-        {From, {gauge, K, D}} ->
+        {From, {store, K, D}} ->
             reply(From, ok),
             loop([{K,D}|Stack]);
         {From, called} ->
