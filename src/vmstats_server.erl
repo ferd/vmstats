@@ -3,7 +3,7 @@
 -module(vmstats_server).
 -behaviour(gen_server).
 %% Interface
--export([start_link/2]).
+-export([start_link/2, start_link/3]).
 %% Internal Exports
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          code_change/3, terminate/2]).
@@ -22,14 +22,18 @@
                 prev_gc :: {GCs::integer(), Words::integer()}}).
 %%% INTERFACE
 start_link(Sink, BaseKey) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, {Sink, BaseKey}, []).
+    start_link(Sink, BaseKey, []).
+
+start_link(Sink, BaseKey, Options) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, {Sink, BaseKey, Options}, []).
 
 %%% INTERNAL EXPORTS
-init({Sink, BaseKey}) ->
-    {ok, Interval} = application:get_env(vmstats, interval),
-    {ok, KeySeparator} = application:get_env(vmstats, key_separator),
-    {ok, SchedTimeEnabled} = application:get_env(vmstats, sched_time),
-    {ok, MemoryMetrics} = application:get_env(vmstats, memory_metrics),
+init({Sink, BaseKey, UserOptions}) ->
+    Options = UserOptions ++ application:get_all_env(vmstats),
+    {interval, Interval} = lists:keyfind(interval, 1, Options),
+    {key_separator, KeySeparator} = lists:keyfind(key_separator, 1, Options),
+    {sched_time, SchedTimeEnabled} = lists:keyfind(sched_time, 1, Options),
+    {memory_metrics, MemoryMetrics} = lists:keyfind(memory_metrics, 1, Options),
 
     Ref = erlang:start_timer(Interval, self(), ?TIMER_MSG),
     {{input, In}, {output, Out}} = erlang:statistics(io),
