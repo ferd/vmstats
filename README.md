@@ -55,13 +55,6 @@ specifies one function:
                   Value :: term()) -> ok.
 ```
 
-### Running as part of own supervision tree
-
-You can run `vmstats` as part of your own supervision tree instead of relying on
-additional application by adding result of `vmstats:child_spec(Sink, BaseKey)`
-to your supervisor. For explanation of arguments look into
-[Configuration](#Configuration) `sink` and `base_key` descriptions.
-
 ## I was basing myself on 'master' and stuff started breaking!
 
 That's because you should use tags for stable versions instead! The [changelog](CHANGELOG.md) should let you know what to expect.
