@@ -25,7 +25,7 @@ start_link(Sink, BaseKey) ->
     start_link(Sink, BaseKey, []).
 
 start_link(Sink, BaseKey, Options) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, {Sink, BaseKey, Options}, []).
+    gen_server:start_link(?MODULE, {Sink, BaseKey, Options}, []).
 
 %%% INTERNAL EXPORTS
 init({Sink, BaseKey, UserOptions}) ->
