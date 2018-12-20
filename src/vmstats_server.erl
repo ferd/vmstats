@@ -14,8 +14,8 @@
                 key :: string(),
                 key_separator :: char() | iodata(),
                 memory_metrics :: [{erlang:memory_type(), atom()}],
-                sched_time :: enabled | disabled,
-                prev_sched :: [{integer(), integer(), integer()}],
+                sched_time=disabled :: enabled | disabled,
+                prev_sched :: [{integer(), integer(), integer()}] | undefined,
                 timer_ref :: reference(),
                 interval :: integer(), % milliseconds
                 prev_io :: {In::integer(), Out::integer()},

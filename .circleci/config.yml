@@ -1,0 +1,17 @@
+version: 2.1
+
+orbs:
+  rebar3: tsloughter/rebar3@0.4.0
+
+workflows:
+  version: 2.1
+  build_and_test:
+    jobs:
+      - rebar3/compile
+      - rebar3/dialyzer:
+          requires:
+            - rebar3/compile
+      - rebar3/eunit:
+          requires:
+            - rebar3/compile
+
