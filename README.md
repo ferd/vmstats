@@ -1,5 +1,7 @@
 # vmstats
 
+[![CircleCI](https://circleci.com/gh/ferd/vmstats.svg?style=svg)](https://circleci.com/gh/ferd/vmstats)
+
 vmstats is a tiny Erlang app that gathers metrics on the Erlang VM and sends them to a configurable sink (e.g., StatsD).
 
 ## Features
