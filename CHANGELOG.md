@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0
+
+- [Allow passing options directly to server instead of setting global env](https://github.com/ferd/vmstats/pull/29)
+- [Add vmstats:child_spec/1 for external supervisors](https://github.com/ferd/vmstats/pull/22)
+- [Add missing field value in tests](https://github.com/ferd/vmstats/pull/28)
+- [Add vm_uptime function to vmstats](https://github.com/ferd/vmstats/pull/25)
+
 ## 2.3.1
 
 - OTP-21 Support (thanks to @hauleth)
