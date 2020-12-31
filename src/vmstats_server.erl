@@ -49,6 +49,7 @@ init({Sink, BaseKey, UserOptions}) ->
                    prev_gc = {GCs, Words}},
 
     erlang:system_flag(scheduler_wall_time, true),
+    erlang:function_exported(Sink, start_stats, 0) andalso Sink:start_stats(),
     case SchedTimeEnabled of
         true ->
             {ok, State#state{sched_time = enabled,
@@ -146,7 +147,8 @@ handle_info(_Msg, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{sink=Sink}) ->
+    erlang:function_exported(Sink, stop_stats, 0) andalso Sink:stop_stats(),
     ok.
 
 %% Returns the two timeslices as a ratio of each other,
